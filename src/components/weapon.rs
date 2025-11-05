@@ -49,9 +49,9 @@ pub fn weapon_controller(
 ) {
     for mouse_in in mouse_input.read() {
         if mouse_in.state == ButtonState::Pressed && mouse_in.button == MouseButton::Left {
-            if let Some(hit) = spatial_query.cast_ray(camera_transform.translation, camera_transform.forward(), weapon.range, false, &SpatialQueryFilter::from_mask(!LayerMask::from(CollisionLayer::Player))) {
+            if let Some(hit) = spatial_query.cast_ray(camera_transform.translation.into(), camera_transform.forward().into(), weapon.range, false, &SpatialQueryFilter::from_mask(!LayerMask::from(CollisionLayer::Player))) {
                 println!("Hit: {:?}", hit);
-                gizmos.sphere(Isometry3d::new(camera_transform.translation + (*camera_transform.forward() * hit.distance), Quaternion::default()), 1.0, BLACK);
+                gizmos.sphere(Isometry3d::new(camera_transform.translation + (*camera_transform.forward() * hit.distance), Quaternion::default().into()), 1.0, BLACK);
                 if player_marker_query.get(hit.entity).ok().is_some() {
                     commands.entity(hit.entity).despawn();
                 }

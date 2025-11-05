@@ -1,6 +1,7 @@
 mod components;
 mod network;
 mod test;
+mod network;
 
 use crate::components::chat::{Chat, chat_window};
 use crate::components::hud::Hud;
@@ -67,7 +68,7 @@ fn main() -> io::Result<()> {
         ResourceInspectorPlugin::<PlayerInfo>::default(),
         FpsOverlayPlugin::default(),
         // PhysicsDebugPlugin::default(),
-        NetworkPlugin,
+        // NetworkPlugin,
         PlayerPlugin
     ));
     app.insert_resource(Time::<Fixed>::from_hz(60.0));
@@ -78,8 +79,8 @@ fn main() -> io::Result<()> {
     app.add_systems(
         FixedUpdate,
         (
-            join_lobby,
-            chat_window,
+            // join_lobby,
+            // chat_window,
             // debug_player_sleeping
             // linear_is_changed
         )
