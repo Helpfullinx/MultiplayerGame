@@ -10,9 +10,7 @@ struct ProtocolPlugin;
 impl Plugin for ProtocolPlugin {
     fn build(&self, app: &mut App) {
         //register all types that should be shared over the network here
-
-        app.register_component()
-
+        
         app.register_component::<Position>()
             .add_prediction()
             .add_should_rollback(position_should_rollback)

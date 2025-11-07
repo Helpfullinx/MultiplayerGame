@@ -3,9 +3,10 @@ use bevy::input::ButtonState;
 use bevy::input::keyboard::KeyboardInput;
 use bevy::input::mouse::MouseWheel;
 use bevy::log::info;
-use bevy::prelude::{Camera3d, Component, EventReader, KeyCode, Local, Quat, Query, Res, Single, Time, Transform, Vec2, Vec3, Window, With, Without};
+use bevy::prelude::{Camera3d, Component, KeyCode, Local, MessageReader, Quat, Query, Res, Single, Time, Transform, Vec2, Vec3, Window, With, Without};
 use bevy::prelude::EulerRot::YXZ;
-use bevy::window::{CursorGrabMode, PrimaryWindow};
+use bevy::window::{CursorGrabMode, CursorOptions, PrimaryWindow};
+use bevy_inspector_egui::egui::ViewportCommand::CursorGrab;
 use crate::components::common::Id;
 use crate::components::player::{PlayerInfo, PlayerMarker};
 
@@ -33,7 +34,7 @@ pub fn apply_player_camera_input (
 pub(crate) fn camera_controller(
     mut camera: Query<&mut Transform, (With<Camera3d>, Without<PlayerMarker>)>,
     mut player: Query<(&Id, &Position, &mut CameraInfo), (With<PlayerMarker>, Without<Camera3d>)>,
-    mut mouse_wheel: EventReader<MouseWheel>,
+    mut mouse_wheel: MessageReader<MouseWheel>,
     player_info: Res<PlayerInfo>,
     mut zoom: Local<f32>
 ) {
@@ -62,18 +63,18 @@ pub(crate) fn camera_controller(
 }
 
 pub fn lock_cursor_system(
-    mut window: Single<&mut Window, With<PrimaryWindow>>,
-    mut keyboard_input: EventReader<KeyboardInput>,
+    mut cursor: Single<&mut CursorOptions>,
+    mut keyboard_input: MessageReader<KeyboardInput>,
     mut toggle_cursor_lock: Local<bool>,
 ) {
    for ev in keyboard_input.read() {
        if ev.state == ButtonState::Pressed && ev.key_code == KeyCode::Tab {
            if *toggle_cursor_lock {
-               window.cursor_options.grab_mode = CursorGrabMode::Locked;
-               window.cursor_options.visible = false;
+               cursor.grab_mode = CursorGrabMode::Locked;
+               cursor.visible = false;
            } else {
-               window.cursor_options.grab_mode = CursorGrabMode::None;
-               window.cursor_options.visible = true;
+               cursor.grab_mode = CursorGrabMode::None;
+               cursor.visible = true;
            }
 
            *toggle_cursor_lock = !*toggle_cursor_lock;

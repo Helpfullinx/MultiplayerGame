@@ -1,7 +1,7 @@
 use crate::components::player::PlayerInfo;
 use bevy::input::keyboard::{Key, KeyboardInput};
 use bevy::input::ButtonState;
-use bevy::prelude::{Component, EventReader, KeyCode, Local, Query, Res, ResMut, Text, With};
+use bevy::prelude::{Component, KeyCode, Local, MessageReader, Query, Res, ResMut, Text, With};
 use serde::{Deserialize, Serialize};
 use std::collections::VecDeque;
 use crate::components::common::Id;
@@ -21,7 +21,7 @@ pub struct ChatMessage {
 
 pub fn chat_window(
     player_info: Res<PlayerInfo>,
-    mut keyboard_input: EventReader<KeyboardInput>,
+    mut keyboard_input: MessageReader<KeyboardInput>,
     mut message_buffer: Local<String>,
     mut is_active: Local<bool>,
     mut chat: Query<(&mut Text, &mut Chat), With<Chat>>,
@@ -40,6 +40,11 @@ pub fn chat_window(
                 }
                 Key::Enter => {
                     message_buffer.clear();
+
+                    //TODO Add chat sending functionality
+
+                    add_chat_message(&mut Vec::new((Id(0),ChatMessage{message: message_buffer.clone()})), chat);
+
                     *is_active = false;
                 }
                 Key::Character(c) => {

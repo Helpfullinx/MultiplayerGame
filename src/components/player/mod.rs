@@ -6,7 +6,7 @@ use crate::components::common::{Id, Vec3};
 use crate::components::hud::Hud;
 use bevy::asset::{AssetServer, Assets};
 use bevy::input::ButtonInput;
-use bevy::prelude::{error, info, warn, AnimationGraph, AnimationGraphHandle, AnimationNodeIndex, AnimationPlayer, Camera, Capsule3d, ChildOf, Command, Component, Entity, EventReader, Gizmos, GlobalTransform, Handle, Local, Node, Quat, Reflect, Resource, Scene, SceneRoot, Time, Val, Vec2, World};
+use bevy::prelude::{error, info, warn, AnimationGraph, AnimationGraphHandle, AnimationNodeIndex, AnimationPlayer, Camera, Capsule3d, ChildOf, Command, Component, Entity, Gizmos, GlobalTransform, Handle, Local, Node, Quat, Reflect, Resource, Scene, SceneRoot, Time, Val, Vec2, World};
 use bevy::prelude::{
     Camera3d, Commands, KeyCode, Mesh3d, MeshMaterial3d, Query, ReflectResource, Res, ResMut, Text, TextLayout, Transform, With,
 };

@@ -6,7 +6,7 @@ use bevy::input::ButtonState;
 use bevy::input::keyboard::KeyboardInput;
 use bevy::input::mouse::MouseButtonInput;
 use bevy::math::{Isometry3d, Vec3};
-use bevy::prelude::{Camera3d, Commands, Component, Dir3, Entity, EulerRot, EventReader, Gizmo, Gizmos, KeyCode, MouseButton, Query, Res, Single, Transform, With};
+use bevy::prelude::{Camera3d, Commands, Component, ContainsEntity, Dir3, Entity, EulerRot, Gizmo, Gizmos, KeyCode, MessageReader, MouseButton, Query, Res, Single, Transform, With};
 use crate::components::camera::CameraInfo;
 use crate::components::CollisionLayer;
 use crate::components::player::PlayerMarker;
@@ -25,7 +25,7 @@ impl Weapon {
 
 // pub fn weapon_equip (
 //     mut commands: Commands,
-//     mut key_input: EventReader<KeyboardInput>
+//     mut key_input: MessageReader<KeyboardInput>
 // ) {
 //     for key_in in key_input.read() {
 //         match key_in.key_code {
@@ -41,7 +41,7 @@ impl Weapon {
 pub fn weapon_controller(
     weapon: Single<&mut Weapon>,
     spatial_query: Res<SpatialQueryPipeline>,
-    mut mouse_input: EventReader<MouseButtonInput>,
+    mut mouse_input: MessageReader<MouseButtonInput>,
     camera_transform: Single<&Transform, With<Camera3d>>,
     player_marker_query: Query<&PlayerMarker>,
     mut gizmos: Gizmos,

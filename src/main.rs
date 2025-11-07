@@ -1,15 +1,10 @@
 mod components;
-mod network;
 mod test;
 mod network;
 
 use crate::components::chat::{Chat, chat_window};
 use crate::components::hud::Hud;
 use crate::components::player::{PlayerInfo, player_controller, PlayerMarker, update_label_pos};
-use crate::network::net_manage::{
-    Communication, TcpConnection,
-};
-use crate::network::net_message::{NetworkMessage, CTcpType};
 use bevy::input::ButtonState;
 use bevy::input::keyboard::KeyboardInput;
 use bevy::prelude::*;
@@ -28,15 +23,13 @@ use crate::components::common::Id;
 use crate::components::player::animation::{animation_control, player_animations, setup_player_animations};
 use crate::components::player::plugin::PlayerPlugin;
 use crate::components::weapon::{weapon_controller, Weapon};
-use crate::network::{NetworkPlugin, RemoteAddress};
 
 #[derive(Resource)]
 pub struct DefaultFont(pub Handle<Font>);
 
 const LOBBY_ID: u32 = 1;
 fn join_lobby(
-    mut keyboard_input: EventReader<KeyboardInput>,
-    mut connection: ResMut<TcpConnection>,
+    mut keyboard_input: MessageReader<KeyboardInput>,
 ) {
     for k in keyboard_input.read() {
         if k.state == ButtonState::Released {
@@ -45,9 +38,7 @@ fn join_lobby(
 
         match k.key_code {
             KeyCode::KeyJ => {
-                if connection.stream.is_some() {
-                    connection.add_message(NetworkMessage(CTcpType::Join { lobby_id: Id(LOBBY_ID) }));
-                }
+                //TODO add join logic
             }
             _ => {}
         }
@@ -72,15 +63,13 @@ fn main() -> io::Result<()> {
         PlayerPlugin
     ));
     app.insert_resource(Time::<Fixed>::from_hz(60.0));
-    app.insert_resource(Time::<Physics>::default().with_relative_speed(1.0));
     app.insert_resource(DefaultFont(Handle::default()));
-    app.insert_resource(RemoteAddress(remote_address.clone()));
     app.add_systems(Startup, setup);
     app.add_systems(
         FixedUpdate,
         (
             // join_lobby,
-            // chat_window,
+            chat_window,
             // debug_player_sleeping
             // linear_is_changed
         )

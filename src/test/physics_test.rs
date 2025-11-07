@@ -5,7 +5,6 @@ use avian3d::dynamics::solver::SolverDiagnostics;
 use avian3d::PhysicsPlugins;
 use avian3d::prelude::{Collider, GravityScale, LinearVelocity, LockedAxes, Physics, PhysicsSchedule, Position, RigidBody, Rotation, SpatialQueryDiagnostics};
 use bevy::prelude::*;
-use bevy::render::mesh::MeshPlugin;
 use bevy::scene::ScenePlugin;
 
 #[test]
@@ -17,7 +16,6 @@ fn physics_test() {
         MinimalPlugins,
         TransformPlugin::default(),
         AssetPlugin::default(),
-        MeshPlugin,
         ScenePlugin,
         PhysicsPlugins::default(),
     ));
