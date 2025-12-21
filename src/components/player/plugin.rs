@@ -16,8 +16,8 @@ impl Plugin for PlayerPlugin {
         app.insert_resource(PlayerInfo {
             current_player_id: Id(0),
             player_inputs: 0,
-            mouse_delta: Vec2::ZERO,
-            accumulated_mouse_delta: Vec2::ZERO,
+            mouse_delta: Vec2::ZERO.into(),
+            accumulated_mouse_delta: Vec2::ZERO.into(),
             player_movement_state: HashSet::new()
         });
         app.add_systems(PreUpdate, (

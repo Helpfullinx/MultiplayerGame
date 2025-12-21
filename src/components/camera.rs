@@ -2,11 +2,10 @@ use avian3d::prelude::Position;
 use bevy::input::ButtonState;
 use bevy::input::keyboard::KeyboardInput;
 use bevy::input::mouse::MouseWheel;
-use bevy::log::info;
-use bevy::prelude::{Camera3d, Component, EventReader, KeyCode, Local, Quat, Query, Res, Single, Time, Transform, Vec2, Vec3, Window, With, Without};
+use bevy::prelude::{Camera3d, Component, EventReader, KeyCode, Local, Quat, Query, Res, Single, Time, Transform, Vec3, Window, With, Without};
 use bevy::prelude::EulerRot::YXZ;
 use bevy::window::{CursorGrabMode, PrimaryWindow};
-use crate::components::common::Id;
+use crate::components::common::{Id, Vec2};
 use crate::components::player::{PlayerInfo, PlayerMarker};
 
 const LOOK_SENSITIVITY: (f32, f32) = (0.001, 0.001);
@@ -44,7 +43,7 @@ pub(crate) fn camera_controller(
     
     for (id, position, mut camera_info) in player.iter_mut() {
         if *id == player_info.current_player_id {
-            apply_player_camera_input(player_info.mouse_delta, &mut camera_info);
+            apply_player_camera_input(player_info.mouse_delta.into(), &mut camera_info);
 
             for mut cam in camera.iter_mut() {
                 cam.rotation = Quat::from_euler(YXZ, camera_info.yaw, -camera_info.pitch, 0.0);

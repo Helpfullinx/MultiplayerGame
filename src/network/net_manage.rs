@@ -1,6 +1,6 @@
 use crate::network::net_message::{NetworkMessage, CTcpType, CUdpType};
 use bevy::prelude::{Component, Resource};
-use std::collections::VecDeque;
+use std::collections::{HashSet, VecDeque};
 use std::io::Error;
 use std::net::SocketAddr;
 use std::sync::Arc;

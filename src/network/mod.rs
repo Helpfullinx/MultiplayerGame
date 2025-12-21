@@ -56,6 +56,8 @@ impl Plugin for NetworkPlugin {
                 (
                     udp_client_net_receive,
                     tcp_client_net_receive,
+                    handle_udp_message.after(udp_client_net_receive),
+                    handle_tcp_message.after(tcp_client_net_receive),
                     add_ping_message.after(handle_udp_message),
                 )
             )
@@ -63,14 +65,8 @@ impl Plugin for NetworkPlugin {
                 FixedPostUpdate,
                 (
                     game_state_system,
-                    (
-                        handle_udp_message,
-                        handle_tcp_message
-                    ),
-                    (
-                        udp_client_net_send,
-                        tcp_client_net_send
-                    )
+                    udp_client_net_send,
+                    tcp_client_net_send
                 ).chain()
             );
     }

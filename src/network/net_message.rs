@@ -1,27 +1,28 @@
+use std::collections::HashMap;
 use crate::components::chat::ChatMessage;
-use crate::components::common::Id;
+use crate::components::common::{Id, Vec2};
 use crate::components::player::Player;
 use bevy::prelude::Component;
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
-use bevy::math::Vec2;
 
 pub trait NetworkMessageType {}
 
-#[derive(Component, Serialize, Deserialize, Clone, Debug)]
+#[derive(Component, Serialize, Deserialize, Clone, Debug, Eq, Hash, PartialEq)]
 pub struct NetworkMessage<T: NetworkMessageType>(pub T);
 
 pub type SequenceNumber = u16;
 pub type BitMask = u16;
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub enum CUdpType {
+    PlayerId {
+        id: Id,
+    },
     Sequence {
         sequence_number: SequenceNumber,
     },
     Input {
         keymask: BitMask,
         mouse_delta: Vec2,
-        player_id: Id,
     },
     Ping {
         intitiation_time: u32,

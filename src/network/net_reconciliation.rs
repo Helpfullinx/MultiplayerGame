@@ -1,12 +1,13 @@
 use crate::components::player::Player;
 use crate::network::net_message::{BitMask, NetworkMessage, SequenceNumber, CUdpType};
-use bevy::prelude::{info, Commands, Component, Entity, Query, ResMut, Resource, Vec2};
+use bevy::prelude::{info, Commands, Component, Entity, Query, ResMut, Resource};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use crate::components::common::Vec2;
 use crate::network::net_manage::UdpConnection;
 
 pub const BUFFER_SIZE: u16 = 1024;
-pub const MISS_PREDICT_LIMIT: u16 = 50;
+pub const MISS_PREDICT_LIMIT: u16 = 5;
 
 #[derive(Component, Serialize, Deserialize, Clone, Debug)]
 pub struct ObjectState(pub StateType);
@@ -67,7 +68,7 @@ pub fn store_game_state(
     game_state: Vec<ObjectState>,
     reconcile_buffer: &mut ResMut<ReconcileBuffer>,
 ) {
-    info!("STORING GAME STATE: {:?}", reconcile_buffer.sequence_counter);
+    // info!("STORING GAME STATE: {:?}", reconcile_buffer.sequence_counter);
     let current_sequence = reconcile_buffer.sequence_counter;
     
     reconcile_buffer

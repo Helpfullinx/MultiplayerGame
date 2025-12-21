@@ -13,13 +13,13 @@ pub fn input_system(
     
     // Accumulated mouse delta was one frame off
     // Adjusts the offset of the delta by one frame
-    if player_info.accumulated_mouse_delta == Vec2::ZERO {
+    if player_info.accumulated_mouse_delta == Vec2::ZERO.into() {
         player_info.accumulated_mouse_delta = player_info.mouse_delta;
     }
     
-    player_info.mouse_delta = mouse_input.delta;
+    player_info.mouse_delta = mouse_input.delta.into();
     
-    player_info.accumulated_mouse_delta += mouse_input.delta;
+    player_info.accumulated_mouse_delta += mouse_input.delta.into();
     
     if keyboard_input.pressed(KeyCode::KeyW) {
         player_info.player_inputs |= 1;

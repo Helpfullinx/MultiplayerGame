@@ -2,6 +2,7 @@ mod components;
 mod network;
 mod test;
 
+use bevy::prelude::Transform;
 use crate::components::chat::{Chat, chat_window};
 use crate::components::hud::Hud;
 use crate::components::player::{PlayerInfo, player_controller, PlayerMarker, update_label_pos};
@@ -16,10 +17,17 @@ use bevy_inspector_egui::DefaultInspectorConfigPlugin;
 use bevy_inspector_egui::bevy_egui::EguiPlugin;
 use bevy_inspector_egui::quick::{ResourceInspectorPlugin, WorldInspectorPlugin};
 use std::collections::VecDeque;
+use std::f32::consts::PI;
 use std::io;
 use avian3d::PhysicsPlugins;
 use avian3d::prelude::{Collider, CollisionLayers, LayerMask, LinearVelocity, Physics, PhysicsDebugPlugin, PhysicsTime, RigidBody, Sleeping};
+use bevy::core_pipeline::experimental::taa::TemporalAntiAliasing;
+use bevy::core_pipeline::Skybox;
 use bevy::dev_tools::fps_overlay::FpsOverlayPlugin;
+use bevy::image::CompressedImageFormats;
+use bevy::pbr::{ScreenSpaceAmbientOcclusion, ScreenSpaceAmbientOcclusionQualityLevel};
+use bevy::render::{camera::TemporalJitter};
+use bevy::render::render_resource::{TextureViewDescriptor, TextureViewDimension};
 use bevy::text::FontSmoothing;
 use crate::components::camera::camera_controller;
 use crate::components::CollisionLayer;
@@ -64,7 +72,6 @@ fn main() -> io::Result<()> {
         PhysicsPlugins::default().with_length_unit(10.0),
         EguiPlugin::default(),
         WorldInspectorPlugin::new(),
-        ResourceInspectorPlugin::<PlayerInfo>::default(),
         FpsOverlayPlugin::default(),
         // PhysicsDebugPlugin::default(),
         NetworkPlugin,
@@ -75,6 +82,7 @@ fn main() -> io::Result<()> {
     app.insert_resource(DefaultFont(Handle::default()));
     app.insert_resource(RemoteAddress(remote_address.clone()));
     app.add_systems(Startup, setup);
+    app.add_systems(Update, asset_loaded);
     app.add_systems(
         FixedUpdate,
         (
@@ -97,14 +105,35 @@ fn setup(
     asset_server: Res<AssetServer>,
 ) {
     default_font.0 = asset_server.load("fonts\\alagard.ttf");
+    let skybox_handle = asset_server.load("skybox\\sky1.png");
     
     println!("{:?}", default_font.0);
     
     // Main Camera
     commands.spawn((
         Camera3d::default(),
-        Transform::from_xyz(10.0, 10.0, 10.0).looking_at(Vec3::ZERO, Vec3::Y)
+        Msaa::Sample8,
+        // TemporalAntiAliasing::default(),
+        // ScreenSpaceAmbientOcclusion { quality_level: ScreenSpaceAmbientOcclusionQualityLevel::Ultra, constant_object_thickness: 4.0 },
+        // TemporalJitter::default(),
+        Transform::from_xyz(10.0, 10.0, 10.0).looking_at(Vec3::ZERO, Vec3::Y),
+        Skybox {
+            image: skybox_handle.clone(),
+            brightness: 1000.0,
+            ..default()
+        },
     ));
+    
+    commands.insert_resource(AmbientLight {
+        color: Color::srgb_u8(210, 220, 240),
+        brightness: 1000.0,
+        ..default()
+    });
+    
+    commands.insert_resource(Cubemap {
+        is_loaded: false,
+        image_handle: skybox_handle,
+    });
 
     // Ground Plane
     commands.spawn((
@@ -118,11 +147,12 @@ fn setup(
 
     //Light Source
     commands.spawn((
-        PointLight {
-            intensity: 10000000.0,
+        DirectionalLight {
+            illuminance: 32000.0,
+            shadows_enabled: true,
             ..default()
         },
-        Transform::from_xyz(0.0, 10.0, 0.0)
+        Transform::from_xyz(0.0, 2.0, 0.0).with_rotation(Quat::from_rotation_x(-PI / 4.)),
     ));
 
     //Position and ID Hud
@@ -164,6 +194,38 @@ fn setup(
     ));
 
     commands.spawn(Weapon{ damage: 10, range: 100.0 });
+}
+
+#[derive(Resource)]
+struct Cubemap {
+    is_loaded: bool,
+    image_handle: Handle<Image>,
+}
+
+fn asset_loaded(
+    asset_server: Res<AssetServer>,
+    mut images: ResMut<Assets<Image>>,
+    mut cubemap: ResMut<Cubemap>,
+    mut skyboxes: Query<&mut Skybox>,
+) {
+    if !cubemap.is_loaded && asset_server.load_state(&cubemap.image_handle).is_loaded() {
+        let image = images.get_mut(&cubemap.image_handle).unwrap();
+        // NOTE: PNGs do not have any metadata that could indicate they contain a cubemap texture,
+        // so they appear as one texture. The following code reconfigures the texture as necessary.
+        if image.texture_descriptor.array_layer_count() == 1 {
+            image.reinterpret_stacked_2d_as_array(image.height() / image.width());
+            image.texture_view_descriptor = Some(TextureViewDescriptor {
+                dimension: Some(TextureViewDimension::Cube),
+                ..default()
+            });
+        }
+
+        for mut skybox in &mut skyboxes {
+            skybox.image = cubemap.image_handle.clone();
+        }
+
+        cubemap.is_loaded = true;
+    }
 }
 
 fn linear_is_changed(

@@ -2,14 +2,14 @@ pub mod animation;
 pub mod plugin;
 mod input;
 
-use crate::components::common::{Id, Vec3};
+use crate::components::common::{Id, Vec3, Vec2};
 use crate::components::hud::Hud;
 use crate::network::net_manage::UdpConnection;
 use crate::network::net_message::{BitMask, NetworkMessage, SequenceNumber, CUdpType};
 use crate::network::net_reconciliation::{ReconcileBuffer, ObjectState, MISS_PREDICT_LIMIT, BUFFER_SIZE};
 use bevy::asset::{AssetServer, Assets};
 use bevy::input::ButtonInput;
-use bevy::prelude::{error, info, warn, AnimationGraph, AnimationGraphHandle, AnimationNodeIndex, AnimationPlayer, Camera, Capsule3d, ChildOf, Command, Component, Entity, EventReader, Gizmos, GlobalTransform, Handle, Local, Node, Reflect, Resource, Scene, SceneRoot, Time, Val, Vec2, World};
+use bevy::prelude::{error, info, warn, AnimationGraph, AnimationGraphHandle, AnimationNodeIndex, AnimationPlayer, Camera, Capsule3d, ChildOf, Command, Component, Entity, EventReader, Gizmos, GlobalTransform, Handle, Local, Node, Reflect, Resource, Scene, SceneRoot, Time, Val, World};
 use bevy::prelude::{
     Camera3d, Commands, KeyCode, Mesh3d, MeshMaterial3d, Query, ReflectResource, Res, ResMut, Text, TextLayout, Transform, With,
 };
@@ -41,8 +41,7 @@ pub enum MovementState {
     Falling,
 }
 
-#[derive(Reflect, Resource, Default)]
-#[reflect(Resource)]
+#[derive(Resource, Default)]
 pub struct PlayerInfo {
     pub current_player_id: Id,
     pub player_inputs: BitMask,
@@ -105,14 +104,10 @@ impl ResimulatePlayer {
         let mut player = world.query_filtered::<(&mut Position, &mut LinearVelocity, &mut CameraInfo), With<PlayerMarker>>();
         if let Some(mut p) = player.single_mut(world).ok() {
             if let Some(pv) = rollback_player_state {
-                info!("Rollback: yaw {:?}, pitch {:?}", pv.2, pv.3);
-
-                p.0.x = pv.0.x;
-                p.0.y = pv.0.y;
-                p.0.z = pv.0.z;
-                p.1.x = pv.1.x;
-                p.1.y = pv.1.y;
-                p.1.z = pv.1.z;
+                info!("Rollback: position {:?}, linear_velocity {:?}", pv.0, pv.1);
+                
+                p.0.0 = pv.0.into();
+                p.1.0 = pv.1.into();
                 p.2.yaw = pv.2;
                 p.2.pitch = pv.3;
             }
@@ -147,25 +142,25 @@ impl ResimulatePlayer {
                 warn!("No input for frame {:?}", i);
             }
 
+            // Run the physics schedule
+            world.resource_mut::<Time<Physics>>().advance_by(Duration::from_secs_f64(1.0 / 60.0));
+            world.run_schedule(PhysicsSchedule);
+            
             // Apply input
             if let Some(fi) = frame_input {
                 if let Some(mut player) = world
-                    .query_filtered::<(&mut LinearVelocity, &mut Rotation, &mut CameraInfo), With<PlayerMarker>>()
+                    .query_filtered::<(&Position, &mut LinearVelocity, &mut Rotation, &mut CameraInfo), With<PlayerMarker>>()
                     .single_mut(world)
                     .ok()
                 {
                     if fi.0 != 0 {
-                        apply_player_movement_input(fi.0, &mut player.0, &mut player.1, &player.2.yaw);
+                        apply_player_movement_input(fi.0, &mut player.1, &mut player.2, &player.3.yaw);
                     }
-                    apply_player_camera_input(fi.1, &mut player.2);
+                    apply_player_camera_input(fi.1, &mut player.3);
 
-                    info!("Sequence {:?}: yaw {:?}, pitch {:?}, mouse_delta {:?}", i, player.2.yaw, player.2.pitch, fi.1);
+                    info!("Sequence {:?}: position {:?}, linear_velocity {:?}, key_mask {:?}", i, player.0, player.1, fi.0);
                 }
             }
-
-            // Run the physics schedule
-            world.resource_mut::<Time<Physics>>().advance_by(Duration::from_secs_f64(1.0 / 60.0));
-            world.run_schedule(PhysicsSchedule);
 
             let new_player_info = {
                 world
@@ -194,11 +189,11 @@ impl ResimulatePlayer {
                     match &mut object_state.0 {
                         PlayerState { player } => {
                             if let Some(p) = new_player_info {
-                                info!("Set state {:?}: yaw {:?}, pitch {:?}", index, p.2, p.3);
+                                info!("Set state {:?}: position {:?}, linear_velocity {:?}", index, p.0, p.1);
 
                                 *player = Player::new(
-                                    Vec3::new(p.0.x, p.0.y, p.0.z),
-                                    Vec3::new(p.1.x, p.1.y, p.1.z),
+                                    p.0.into(),
+                                    p.1.into(),
                                     p.2,
                                     p.3,
                                     p.4
@@ -249,13 +244,9 @@ impl ResimulatePlayer {
                 .single_mut(world)
                 .ok()
             {
-                info!("Updated state: yaw {:?}, pitch {:?}", ncd.2, ncd.3);
-                p.0.x = ncd.0.x;
-                p.0.y = ncd.0.y;
-                p.0.z = ncd.0.z;
-                p.1.x = ncd.1.x;
-                p.1.y = ncd.1.y;
-                p.1.z = ncd.1.z;
+                info!("Updated state: position {:?}, linear_velocity {:?}", ncd.0, ncd.1);
+                p.0.0 = ncd.0.into();
+                p.1.0 = ncd.1.into();
                 p.2.yaw = ncd.2;
                 p.2.pitch = ncd.3;
             }
@@ -312,63 +303,52 @@ fn apply_player_movement_input(
 
     let normalized_rotated_velocity = Quat::from_euler(YXZ, *yaw, 0.0, 0.0).mul_vec3(vector.normalize_or_zero());
 
-    // println!("normalized_velocity: {:?}", normalized_velocity);
-
+    rotation.0 = Quat::from_euler(YXZ, *yaw, 0.0, 0.0);
+    
     linear_velocity.x = normalized_rotated_velocity.x * WALK_SPEED;
     linear_velocity.z = normalized_rotated_velocity.z * WALK_SPEED;
-    rotation.0 = Quat::from_euler(YXZ, *yaw, 0.0, 0.0);
 }
 
 pub fn player_controller(
     mut player_info: ResMut<PlayerInfo>,
-    mut players: Query<(&Id, &Transform, &mut LinearVelocity, &mut Rotation, &mut CameraInfo, &mut PlayerAnimationState), With<PlayerMarker>>,
+    mut players: Query<(&Id, &Position, &mut LinearVelocity, &mut Rotation, &mut CameraInfo, &mut PlayerAnimationState), With<PlayerMarker>>,
     mut hud: Query<&mut Text, With<Hud>>,
     mut connection: ResMut<UdpConnection>,
     reconcile_buffer: Res<ReconcileBuffer>,
     mut commands: Commands,
 ) {
     if connection.remote_socket.is_some() {
-        for (id, transform, mut linear_velo, mut rotation, mut camera_info, mut player_anim_state) in players.iter_mut() {
+        for (id, position, mut linear_velo, mut rotation, mut camera_info, mut player_anim_state) in players.iter_mut() {
             if player_info.current_player_id == *id {
                 if player_info.player_inputs != 0 {
                     player_anim_state.0 = AnimationState::Walking;
                     apply_player_movement_input(player_info.player_inputs, &mut linear_velo, &mut rotation, &camera_info.yaw);
                 } else {
                     player_anim_state.0 = AnimationState::Idle;
+                    info!("No input");
                 }
 
                 if let Some(mut h) = hud.single_mut().ok() {
                     h.clear();
                     h.push_str(&format!(
                         "x: {:?}\ny: {:?}\nz: {:?}\nping: {:?}\n{:?}",
-                        transform.translation.x, transform.translation.y, transform.translation.z, connection.ping, player_info.current_player_id
+                        position.x, position.y, position.z, connection.ping, player_info.current_player_id
                     ));
                 }
-
-                let position = Vec3::new(
-                    transform.translation.x,
-                    transform.translation.y,
-                    transform.translation.z,
-                );
-
-                let lv = Vec3::new(
-                    linear_velo.x,
-                    linear_velo.y,
-                    linear_velo.z,
-                );
                 
-                commands.spawn(ObjectState(PlayerState { player: Player::new(position, lv, camera_info.yaw, camera_info.pitch, player_anim_state.0) }));
+                commands.spawn(ObjectState(PlayerState { player: Player::new(position.0.into(), linear_velo.0.into(), camera_info.yaw, camera_info.pitch, player_anim_state.0) }));
                 commands.spawn(ObjectState(InputState { encoded_input: player_info.player_inputs, mouse_delta: player_info.accumulated_mouse_delta - player_info.mouse_delta }));
             }
         }
 
+        connection.add_message(NetworkMessage(CUdpType::PlayerId {id: player_info.current_player_id}));
+        
         connection.add_message(NetworkMessage(CUdpType::Input {
             keymask: player_info.player_inputs,
             mouse_delta: player_info.accumulated_mouse_delta - player_info.mouse_delta,
-            player_id: player_info.current_player_id,
         }));
 
-        player_info.accumulated_mouse_delta = Vec2::ZERO;
+        player_info.accumulated_mouse_delta = Vec2::new(0.0, 0.0);
     }
 }
 
@@ -403,25 +383,25 @@ pub fn reconcile_player(
                 let sps = *server_player_state.unwrap();
                 let cps = client_player_state.unwrap();
 
-                gizmos.cuboid(
-                    Transform::from_xyz(sps.position.x, sps.position.y, sps.position.z)
-                        .with_scale(bevy::math::Vec3::splat(1.1))
-                        .with_rotation(Quat::from_euler(YXZ, sps.yaw,0.0,0.0)),
-                    WHITE
-                );
-                
-                gizmos.cuboid(
-                    Transform::from_xyz(cps.position.x, cps.position.y, cps.position.z).with_rotation(Quat::from_euler(YXZ, cps.yaw,0.0,0.0)),
-                    PURPLE
-                );
+                // gizmos.cuboid(
+                //     Transform::from_xyz(sps.position.x, sps.position.y, sps.position.z)
+                //         .with_scale(bevy::math::Vec3::splat(1.1))
+                //         .with_rotation(Quat::from_euler(YXZ, sps.yaw,0.0,0.0)),
+                //     WHITE
+                // );
+                // 
+                // gizmos.cuboid(
+                //     Transform::from_xyz(cps.position.x, cps.position.y, cps.position.z).with_rotation(Quat::from_euler(YXZ, cps.yaw,0.0,0.0)),
+                //     PURPLE
+                // );
 
                 if !sps.eq(&cps) {
                     if reconcile_buffer.miss_predict_counter >= MISS_PREDICT_LIMIT - 1 {
-                        warn!("RECONCILED");
-                        info!("current sequence: {:?}, recieved sequence: {:?}", reconcile_buffer.sequence_counter, message_seq_num);
-                        info!("client: {:?}, server: {:?}", (cps.yaw, cps.pitch), (sps.yaw, sps.pitch));
-                        
+                        // warn!("RECONCILED");
+                        // info!("current sequence: {:?}, recieved sequence: {:?}", reconcile_buffer.sequence_counter, message_seq_num);
+                        // info!("client: {:?}, server: {:?}", cps.position, sps.position);
 
+                        
                         let mut new_frame_state = reconcile_objects.clone();
                         for object_state in new_frame_state.iter_mut() {
                             match &mut object_state.0 {
@@ -432,7 +412,7 @@ pub fn reconcile_player(
                             }
                         }
 
-                        commands.queue(ResimulatePlayer{ received_sequence_number: message_seq_num, object_states: new_frame_state });
+                        // commands.queue(ResimulatePlayer{ received_sequence_number: message_seq_num, object_states: new_frame_state });
                         reconcile_buffer.miss_predict_counter = 0;
                     } else {
                         reconcile_buffer.miss_predict_counter += 1;
@@ -501,9 +481,7 @@ pub fn update_players(
 
             commands.entity(entity).insert(CollisionLayers::new(CollisionLayer::Enemy, [LayerMask::ALL]));
 
-            transform.translation.x = player.position.x;
-            transform.translation.y = player.position.y;
-            transform.translation.z = player.position.z;
+            transform.translation = player.position.into();
             transform.rotation = Quat::from_euler(YXZ, player.yaw, 0.0, 0.0);
             anim_state.0 = player.animation_state;
         }
@@ -518,11 +496,16 @@ pub fn update_players(
                 RigidBody::Dynamic,
                 Collider::capsule(0.5, 1.0),
                 Friction::new(1.0),
-                LockedAxes::new().lock_rotation_x().lock_rotation_y().lock_rotation_z(),
-                Position::from_xyz(p.1.position.x, p.1.position.y, p.1.position.z),
+                LockedAxes::new()
+                    .lock_rotation_x()
+                    .lock_rotation_y()
+                    .lock_rotation_z(),
+                Position::from_xyz(
+                    p.1.position.x,
+                    p.1.position.y,
+                    p.1.position.z
+                ),
                 CollisionLayers::new(CollisionLayer::Player, [LayerMask::ALL]),
-                // Mesh3d(meshes.add(Capsule3d::new(0.5, 1.0))),
-                // MeshMaterial3d(materials.add(StandardMaterial::from(Color::WHITE))),
                 Transform::default().with_scale(bevy::math::Vec3::splat(1.0)),
                 CameraInfo{ yaw: p.1.yaw, pitch: p.1.pitch },
                 PlayerAnimationState(AnimationState::Idle),
@@ -531,7 +514,7 @@ pub fn update_players(
             )).with_children( |parent| {
                 parent.spawn((
                     SceneRoot(asset_server.load(GltfAssetLabel::Scene(0).from_asset("meshes\\player.glb"))),
-                    Transform::from_xyz(0.0, -1.0, 0.0).with_rotation(Quat::from_euler(YXZ, PI, 0.0, 0.0)),
+                    Transform::from_xyz(0.0, -1.0, 0.0).with_rotation(Quat::from_euler(YXZ, PI, 0.0, 0.0)).with_scale(bevy::math::Vec3::splat(0.15)),
                 ));
             }).id();
 
@@ -581,7 +564,7 @@ pub fn update_label_pos(
 
             let viewport_position = match camera.world_to_viewport(camera_transform, pos) {
                 Ok(v) => v,
-                Err(e) => { /*println!("{:?}", e);*/ continue; },
+                Err(e) => { continue; },
             };
 
             node.top = Val::Px(viewport_position.y);
