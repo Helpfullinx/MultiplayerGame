@@ -16,6 +16,8 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
+    - name: Install ubuntu pkgs
+      run: sudo apt install -y wayland-devel
     - name: Build
       run: cargo build --verbose
     - name: Run tests
