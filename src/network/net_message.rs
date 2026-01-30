@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 use crate::components::chat::ChatMessage;
-use crate::components::common::{Id, Vec2};
-use crate::components::player::Player;
-use bevy::prelude::Component;
+use crate::components::common::{Id};
+use crate::components::player::PlayerState;
+use bevy::prelude::{Component, Vec2};
 use serde::{Deserialize, Serialize};
 
 pub trait NetworkMessageType {}
@@ -25,7 +25,7 @@ pub enum CUdpType {
         mouse_delta: Vec2,
     },
     Ping {
-        intitiation_time: u32,
+        start_time: u32,
         last_rtt: u32,
     },
 }
@@ -36,7 +36,7 @@ pub enum SUdpType {
         sequence_number: SequenceNumber,
     },
     Players {
-        players: HashMap<Id, Player>,
+        players: HashMap<Id, PlayerState>,
     },
     Pong {
         initiation_time: u32,

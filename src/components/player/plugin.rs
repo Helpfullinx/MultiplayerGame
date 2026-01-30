@@ -1,10 +1,10 @@
 use std::collections::HashSet;
-use bevy::app::{App, FixedPreUpdate, Plugin, PostUpdate};
+use bevy::app::{App, FixedPostUpdate, FixedPreUpdate, Plugin, PostUpdate};
 use bevy::math::Vec2;
-use bevy::prelude::{FixedUpdate, PreUpdate, Update};
+use bevy::prelude::{FixedUpdate, IntoScheduleConfigs, PreUpdate, Update};
 use crate::components::camera::{camera_controller, lock_cursor_system};
 use crate::components::common::Id;
-use crate::components::player::{player_controller, update_label_pos, PlayerInfo};
+use crate::components::player::{player_controller, update_label_pos, update_player_kinematics, PlayerInfo};
 use crate::components::player::animation::{animation_control, player_animations, setup_player_animations};
 use crate::components::player::input::input_system;
 use crate::components::weapon::weapon_controller;
@@ -42,9 +42,10 @@ impl Plugin for PlayerPlugin {
             FixedUpdate,
             (
                 player_controller,
+                update_player_kinematics,
                 player_animations,
                 animation_control
-            )
+            ).chain()
         );
     }
 }

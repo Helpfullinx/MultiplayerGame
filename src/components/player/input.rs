@@ -1,6 +1,6 @@
 use bevy::input::keyboard::KeyboardInput;
 use bevy::input::mouse::{AccumulatedMouseMotion, MouseMotion};
-use bevy::prelude::{ButtonInput, EventReader, KeyCode, Res, ResMut, Vec2};
+use bevy::prelude::{ButtonInput, KeyCode, Res, ResMut, Vec2};
 use crate::components::player::{MovementState, PlayerInfo};
 
 pub fn input_system(
@@ -19,7 +19,7 @@ pub fn input_system(
     
     player_info.mouse_delta = mouse_input.delta.into();
     
-    player_info.accumulated_mouse_delta += mouse_input.delta.into();
+    player_info.accumulated_mouse_delta += mouse_input.delta;
     
     if keyboard_input.pressed(KeyCode::KeyW) {
         player_info.player_inputs |= 1;

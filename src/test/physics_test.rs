@@ -4,8 +4,8 @@ use avian3d::collision::CollisionDiagnostics;
 use avian3d::dynamics::solver::SolverDiagnostics;
 use avian3d::PhysicsPlugins;
 use avian3d::prelude::{Collider, GravityScale, LinearVelocity, LockedAxes, Physics, PhysicsSchedule, Position, RigidBody, Rotation, SpatialQueryDiagnostics};
+use bevy::mesh::MeshPlugin;
 use bevy::prelude::*;
-use bevy::render::mesh::MeshPlugin;
 use bevy::scene::ScenePlugin;
 
 #[test]

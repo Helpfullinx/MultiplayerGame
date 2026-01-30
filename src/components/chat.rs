@@ -1,9 +1,9 @@
 use crate::components::player::PlayerInfo;
 use crate::network::net_manage::TcpConnection;
-use crate::network::net_message::{NetworkMessage, CTcpType};
+use crate::network::net_message::{NetworkMessage, CTcpType, STcpType};
 use bevy::input::keyboard::{Key, KeyboardInput};
 use bevy::input::ButtonState;
-use bevy::prelude::{Component, EventReader, KeyCode, Local, Query, Res, ResMut, Text, With};
+use bevy::prelude::{Changed, Component, KeyCode, Local, MessageReader, Query, Res, ResMut, Single, Text, With};
 use serde::{Deserialize, Serialize};
 use std::collections::VecDeque;
 use crate::components::common::Id;
@@ -23,8 +23,8 @@ pub struct ChatMessage {
 
 pub fn chat_window(
     player_info: Res<PlayerInfo>,
-    mut connection: ResMut<TcpConnection>,
-    mut keyboard_input: EventReader<KeyboardInput>,
+    mut connection: Single<&mut TcpConnection<CTcpType>>,
+    mut keyboard_input: MessageReader<KeyboardInput>,
     mut message_buffer: Local<String>,
     mut is_active: Local<bool>,
     mut chat: Query<(&mut Text, &mut Chat), With<Chat>>,
@@ -55,7 +55,7 @@ pub fn chat_window(
                     *is_active = false;
                 }
                 Key::Character(c) => {
-                    if !message_full { message_buffer.push_str(c) }
+                    if !message_full { message_buffer.push_str(c.as_str()) }
                 }
                 Key::Space => {
                     if !message_full { message_buffer.push_str(" ") }
@@ -95,7 +95,7 @@ pub fn chat_window(
     }
 }
 
-pub fn add_chat_message(
+pub fn client_add_chat_message(
     messages: &mut Vec<(Id, ChatMessage)>,
     chat: &mut Query<&mut Chat>
 ) {
@@ -107,6 +107,30 @@ pub fn add_chat_message(
             }
             let message = messages.pop().unwrap();
             chat.chat_history.push_front(message);
+        }
+    }
+}
+
+pub fn server_add_chat_message(message: (Id, ChatMessage), chat: &mut Query<&mut Chat>) {
+    if let Some(mut chat) = chat.single_mut().ok() {
+        while chat.chat_history.len() >= CHAT_HISTORY_LEN {
+            chat.chat_history.pop_front();
+        }
+        if !(message.1.message.len() > MAX_CHAT_MESSAGE_LENGTH) {
+            chat.chat_history.push_back(message);
+        }
+    }
+}
+
+pub fn send_chat_to_all_connections(
+    chat: Query<&mut Chat, Changed<Chat>>,
+    mut connections: Query<&mut TcpConnection<STcpType>>,
+) {
+    if let Some(chat) = chat.single().ok() {
+        for mut c in connections.iter_mut() {
+            c.add_message(NetworkMessage(STcpType::Chat {
+                messages: Vec::from(chat.chat_history.clone()),
+            }));
         }
     }
 }
